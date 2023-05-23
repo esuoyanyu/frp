@@ -1,0 +1,80 @@
+#!/bin/bash
+
+HOME_DIR=/home/chy/bin/frp_0.45.0_linux_amd64
+
+BIN=frpc
+CONFIG=frpc.ini
+LOG=frpc.$(date +%Y-%m-%d).log
+
+NAME=frpc
+
+start() {
+    start-stop-daemon --start --background --test  --exec ${HOME_DIR}/${BIN} -- -c ${HOME_DIR}/${CONFIG}
+    if [ $? -eq 0 ]; then
+        start-stop-daemon --start --background --exec ${HOME_DIR}/${BIN} -- -c ${HOME_DIR}/${CONFIG}
+        if [ $? -eq 0 ]; then
+            ret=0
+        else
+            ret=2
+        fi
+    else
+        ret=1
+    fi
+
+    return "${ret}"
+}
+
+stop() {
+
+    start-stop-daemon --stop  --exec ${HOME_DIR}/${BIN} -- -c ${HOME_DIR}/${CONFIG}
+
+    return "$?"
+}
+
+case "$1" in
+    start)
+        start
+        case "$?" in
+            0|1)
+                echo "$(date) ${NAME} $1 success ret=$?" >> ${HOME_DIR}/${LOG}
+                ;;
+            *)
+                echo "$(date) ${NAME} $1 failed ret=$?" >> ${HOME_DIR}/${LOG}
+                ;;
+        esac
+        ;;
+    stop)
+        stop
+        case "$?" in
+            0|1)
+                echo "$(date) ${NAME} $1 success ret=$?" >> ${HOME_DIR}/${LOG}
+                ;;
+            *)
+                echo "$(date) ${NAME} $1 failed ret=$?" >> ${HOME_DIR}/${LOG}
+                ;;
+        esac
+        ;;
+    restart)
+        stop
+        case "$?" in
+            0|1)
+                start
+                case "$?" in
+                    0|1)
+                        echo "$(date) ${NAME} $1 success ret=$?" >> ${HOME_DIR}/${LOG}
+                        ;;
+                    *)
+                        echo "$(date) ${NAME} $1 failed ret=$?" >> ${HOME_DIR}/${LOG}
+                        ;;
+                esac
+                ;;
+            *)
+                echo "$(date) ${NAME} $1 failed ret=$?" >> ${HOME_DIR}/${LOG}
+                ;;
+        esac
+        ;;
+    *)
+        echo "Usage: ${NAME} {start|stop|restart}" >&2
+        exit 3
+        ;;
+esac

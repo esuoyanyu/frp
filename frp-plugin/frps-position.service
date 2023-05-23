@@ -1,0 +1,14 @@
+#frps-position
+
+[Unit]
+Description=frps-position
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/etc/init.d/frps-position start
+ExecStop=/etc/init.d/frps-position stop
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

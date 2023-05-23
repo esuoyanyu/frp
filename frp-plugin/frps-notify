@@ -1,0 +1,100 @@
+#!/bin/bash
+
+
+LOG_PATH=/home/chy/bin/frp_0.43.0_linux_amd64/plugin/log
+this_log=${LOG_PATH}/$(date +%Y-%m-%d).log
+echo "crond entry $1" > ${this_log} 
+
+pack() {
+        log_file="${LOG_PATH}/$1_$(date +%Y-%m-%d).tar.gz"
+        total=$(ls -l ${LOG_PATH}/*.$1 2>/dev/null | grep "^-" | wc -l)
+        if [ $? -ne 0 -o ${total} -le 0 ]; then
+                echo "3#today no log"
+                return 3
+        fi
+
+	pushd ${LOG_PATH} > /dev/null 2>&1
+        tar -czf  ${log_file} ./*.$1 > /dev/null 2>&1
+	popd > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+                rm -f ${LOG_PATH}/*."$1"
+                if [ $? -ne 0 ]; then
+			echo "1#${log_file}"
+                        ret=1
+                fi
+		echo "0#${log_file}"
+                ret=0
+        else
+		echo "2#tar failed"
+                ret=2
+        fi
+
+        return "$ret"
+}
+
+user=xxxxxx@126.com
+send_mail() {
+        title="frps position $1 $(date +%Y-%m-%d)"
+        case "$3" in
+                0|1)
+                        mail -A "$2" -s "${title}" "${user}" << EOF
+
+Hi hongyu.chen
+	level=$1
+	Please check this file $2.
+
+date: $(date +%Y-%m-%d)
+from frp.esuoyanyu.com
+EOF
+                        if [ $? -ne 0 ]; then
+                                return 1
+                        else
+                                rm -f "$2"
+                                return 0
+                        fi
+                ;;
+                2|3)
+                       	mail -s "${title}" "${user}" << EOF
+
+Hi hongyu.chen:
+	level=$1
+	$2
+
+date: $(date +%Y-%m-%d)
+from frp.esuoyanyu.com
+EOF
+
+                        return "$?"
+                ;;
+                *)
+                        return 2
+                ;;
+        esac
+
+        return 0
+}
+
+if [ $# -ne 1 ]; then
+        echo "args error" >> ${this_log}
+        exit 3
+fi
+
+if [ $1 == 'info' -o $1 == 'error' ]; then
+        ret=$(pack $1)
+	echo $ret >> ${this_log}
+	statu=${ret%#*}
+        con=${ret##*#}
+        case "${statu}" in
+                0|1|2|3)
+                        send_mail $1 "${con}" ${statu}
+                        if [ $? -ne 0 ]; then
+                                echo "send email failed" >> ${this_log}
+                        fi
+                ;;
+                *)
+                        echo "${statu} call pack function falied" >> ${this_log}        
+                ;;
+        esac
+else
+        echo "$1 failed" >> ${this_log}
+fi

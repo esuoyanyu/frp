@@ -1,0 +1,81 @@
+#!/bin/bash
+
+HOME_DIR=/home/chy/bin/frp_0.43.0_linux_amd64/plugin
+PYTHON=/usr/bin
+BIN=frps-position.py
+NAME=frpc-position
+PID=/var/run/frps-position.pid
+
+start() {
+    start-stop-daemon --start --background --test --exec ${PYTHON}/python -- ${HOME_DIR}/${BIN}
+    if [ $? -eq 0 ]; then
+        start-stop-daemon --start --chuid chy --make --pidfile ${PID} --background --exec ${PYTHON}/python -- ${HOME_DIR}/${BIN}
+        if [ $? -eq 0 ]; then
+            ret=0
+        else
+            ret=2
+        fi
+    else
+        ret=1
+    fi
+
+    return "${ret}"
+}
+
+stop() {
+    start-stop-daemon --stop --exec ${PYTHON}/python -- ${HOME_DIR}/${BIN}
+
+    return "$?"
+}
+
+
+case "$1" in
+    start)
+        start
+        case "$?" in
+            0|1)
+                echo "$(date) ${NAME} $1 success ret=$?"
+            ;;
+            *)
+                echo "$(date) ${NAME} $1 failed ret=$?"
+            ;;
+        esac
+    ;;
+
+    stop)
+        stop
+        case "$?" in
+            0|1)
+                echo "$(date) ${NAME} $1 success ret=$?"
+            ;;
+            *)
+                echo "$(date) ${NAME} $1 failed ret=$?"
+            ;;
+        esac
+    ;;
+
+    restart)
+        stop
+        case "$?" in
+        0|1)
+            start
+            case "$?" in
+                0|1)
+                    echo "$(date) ${NAME} $1 success ret=$?"
+                ;;
+                *)
+                    echo "$(date) ${NAME} $1 failed ret=$?"
+                ;;
+            esac
+            ;;
+        *)
+            echo "$(date) ${NAME} $1 failed ret=$?"
+            ;;
+        esac
+    ;;
+
+    *)
+        echo "Usage:${NAME} {start|stop|restart}" >&2
+        exit 3
+    ;;
+esac
